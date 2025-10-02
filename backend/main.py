@@ -39,8 +39,9 @@ class QueryRequest(BaseModel):
     query: str
     data: List[Dict[str, Any]]
 
-# --- Helper Functions (No changes needed here) ---
+# --- Helper Functions ---
 def apply_filters(df: pl.DataFrame, filters: List[Dict[str, Any]]) -> pl.DataFrame:
+    # (This function remains unchanged)
     if not filters:
         return df
     expressions = []
@@ -64,6 +65,7 @@ def apply_filters(df: pl.DataFrame, filters: List[Dict[str, Any]]) -> pl.DataFra
     return df.filter(pl.all_horizontal(expressions))
 
 async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[str, Any]]:
+    # (This function is updated)
     system_prompt = f"""
     You are an AI data analysis assistant. Your task is to convert a user's natural language query into a structured JSON filter based on the provided CSV headers.
     The JSON should be an array of filter objects. Each object must have 'header', 'operator', and 'value'.
@@ -76,7 +78,7 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
     for attempt in range(3):
         try:
             chat_completion = await groq_client.chat.completions.create(
-                messages=messages, model="llama3-70b-8192", temperature=0, response_format={"type": "json_object"},
+                messages=messages, model="openai/gpt-oss-20b", temperature=0,
             )
             response_text = chat_completion.choices[0].message.content
             if not response_text: continue
@@ -95,9 +97,9 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
     return []
 
 # --- API Endpoints ---
-
-@app.post("/api/query")  # <<< THIS IS THE FIX
+@app.post("/api/query")
 async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
+    # (This function remains unchanged)
     if not request.data: return []
     try:
         df = pl.DataFrame(request.data)
