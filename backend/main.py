@@ -9,24 +9,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import AsyncGroq
 
-# Load environment variables from .env file
 load_dotenv()
 
-# --- Initialize Groq Client ---
 try:
     groq_client = AsyncGroq(api_key=os.environ["GROQ_API_KEY"])
 except KeyError:
     raise RuntimeError("GROQ_API_KEY not found in .env file. Please add your Groq API key.")
 
-# Initialize FastAPI app
+# CHANGE 1: Remove the root_path from the app definition
 app = FastAPI(
     title="CSV Query Genie API (Groq/Polars Edition)",
     description="An API that uses Groq and Polars to filter CSV data.",
     version="1.1.0",
-    root_path="/api"  
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,51 +31,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- Pydantic Models ---
 class QueryRequest(BaseModel):
     query: str
     data: List[Dict[str, Any]]
 
-# --- Helper Functions ---
 def apply_filters(df: pl.DataFrame, filters: List[Dict[str, Any]]) -> pl.DataFrame:
     if not filters:
         return df
-        
     expressions = []
     for condition in filters:
         header, operator, value = condition.get("header"), condition.get("operator"), condition.get("value")
-        if not all([header, operator, value is not None]):
-            continue
+        if not all([header, operator, value is not None]): continue
         try:
             col = pl.col(header)
-            # Polars automatically attempts to cast types, making it robust
-            if operator == '===':
-                expressions.append(col == value)
-            elif operator == '!==':
-                expressions.append(col != value)
-            elif operator == '>':
-                expressions.append(col > value)
-            elif operator == '<':
-                expressions.append(col < value)
-            elif operator == '>=':
-                expressions.append(col >= value)
-            elif operator == '<=':
-                expressions.append(col <= value)
-            elif operator == 'contains':
-                # Ensure the column is treated as a string for contains operation
-                expressions.append(col.cast(pl.Utf8).str.contains(str(value), literal=False))
-            elif operator == '!contains':
-                expressions.append(~col.cast(pl.Utf8).str.contains(str(value), literal=False))
+            if operator == '===': expressions.append(col == value)
+            elif operator == '!==': expressions.append(col != value)
+            elif operator == '>': expressions.append(col > value)
+            elif operator == '<': expressions.append(col < value)
+            elif operator == '>=': expressions.append(col >= value)
+            elif operator == '<=': expressions.append(col <= value)
+            elif operator == 'contains': expressions.append(col.cast(pl.Utf8).str.contains(str(value), literal=False))
+            elif operator == '!contains': expressions.append(~col.cast(pl.Utf8).str.contains(str(value), literal=False))
         except Exception as e:
             print(f"Could not create filter expression for {condition}: {e}")
             continue
-            
-    if not expressions:
-        return df
-
-    # Chain all valid filter expressions together
+    if not expressions: return df
     return df.filter(pl.all_horizontal(expressions))
-
 
 async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[str, Any]]:
     system_prompt = f"""
@@ -88,12 +65,9 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
     - 'header' must be one of the provided CSV Headers: {json.dumps(headers)}
     - 'operator' must be one of: '===', '!==', '>', '<', '>=', '<=', 'contains', '!contains'.
     - 'value' should be a number for numeric comparisons, otherwise a string.
-    If the query is ambiguous or cannot be converted, return an empty array [].
-    You MUST only return a JSON object with a single key "filters" that contains the array of filter objects. Do not include any extra text, explanations, or markdown formatting like ```json.
+    You MUST only return a JSON object with a single key "filters" that contains the array of filter objects. Do not include any extra text.
     """
-    
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": query}]
-
     for attempt in range(3):
         try:
             chat_completion = await groq_client.chat.completions.create(
@@ -101,48 +75,37 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
             )
             response_text = chat_completion.choices[0].message.content
             if not response_text: continue
-            
             response_data = json.loads(response_text)
             filters = response_data.get("filters", [])
-
             if not isinstance(filters, list): raise ValueError("The 'filters' key does not contain a list.")
-            
-            # Polars handles type casting well, so we don't need to pre-process numbers here.
             return filters
-
         except (json.JSONDecodeError, ValueError) as e:
             print(f"Attempt {attempt + 1}: Failed to parse AI response. Error: {e}")
             messages.extend([
                 {"role": "assistant", "content": response_text},
-                {"role": "user", "content": "Your previous response was not valid JSON. Please correct it and only return the JSON object."}
+                {"role": "user", "content": "Your previous response was not valid JSON. Please correct it."}
             ])
             if attempt == 2:
                 raise HTTPException(status_code=500, detail="AI failed to generate a valid JSON filter.")
     return []
 
-# --- API Endpoint ---
-@app.post("/query")
+# CHANGE 2: The endpoint now explicitly listens for the full path
+@app.post("/api/query")
 async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
-    if not request.data:
-        return []
+    if not request.data: return []
     try:
-        # Convert incoming list of dicts to a Polars DataFrame
         df = pl.DataFrame(request.data)
         headers = df.columns
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid data format.")
-    
     filters = await generate_filter_from_ai(request.query, headers)
-    
-    if not filters:
-        return df.to_dicts()
-        
+    if not filters: return df.to_dicts()
     try:
         filtered_df = apply_filters(df, filters)
         return filtered_df.to_dicts()
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to apply filters: {str(e)}")
 
-@app.get("/", include_in_schema=False)
+@app.get("/api")
 async def root():
     return {"message": "CSV Query Genie API is running!"}
