@@ -1,0 +1,5 @@
+{
+  "name": "CSV Query Genie",
+  "description": "An AI-powered data analysis tool that allows users to upload any CSV file and ask natural language questions to filter and query the data. The AI translates questions into structured filters to display the results in a clean table.",
+  "requestFramePermissions": []
+}
