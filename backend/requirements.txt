@@ -1,6 +1,5 @@
 fastapi
 uvicorn[standard]
-pandas
 python-dotenv
-google-generativeai
 groq
+polars
