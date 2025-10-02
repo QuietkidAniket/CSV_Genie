@@ -96,8 +96,7 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
 
 # --- API Endpoints ---
 
-# THE FIX: The path is now just "/query". Vercel's routing handles the "/api" part.
-@app.post("/query")
+@app.post("/api/query")  # <<< THIS IS THE FIX
 async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
     if not request.data: return []
     try:
@@ -113,7 +112,6 @@ async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to apply filters: {str(e)}")
 
-# THE FIX: The root path is now just "/".
-@app.get("/")
+@app.get("/api")
 async def root():
     return {"message": "CSV Query Genie API is running!"}
