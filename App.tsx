@@ -92,8 +92,8 @@ function App() {
           </div>
         )}
       </main>
-       <footer className="text-center py-6 text-gray-600 text-sm">
-            <p>Powered by Gemini API. Built with React & Tailwind CSS.</p>
+        <footer className="text-center py-6 text-gray-600 text-sm">
+            <p>Powered by Groq. Built with React & Tailwind CSS.</p>
         </footer>
     </div>
   );

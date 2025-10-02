@@ -9,7 +9,7 @@ This project uses a modern client-server architecture:
 -   **Frontend:** A responsive web interface built with **React** and styled with **Tailwind CSS**. It handles file uploads and displays the filtered data.
 -   **Backend:** A secure and efficient API built with **Python** and **FastAPI**. It handles the core logic:
     -   Receiving data and queries from the frontend.
-    -   Calling the **Gemini AI** to parse natural language.
+    -   Calling the **Large Language Model** to parse natural language.
     -   Using the **Pandas** library to perform powerful and fast data filtering.
 
 ## Features
@@ -46,7 +46,7 @@ First, set up and run the Python server.
 
 4.  **Set up your API Key:**
     -   Rename the `.env.example` file to `.env`.
-    -   Open the `.env` file and replace `your_google_api_key_here` with your actual Google AI (Gemini) API key.
+    -   Open the `.env` file and replace your groq api key.
     ```
     API_KEY="your_google_api_key_here"
     ```
@@ -73,7 +73,7 @@ You can now use the application! Upload a CSV file and start asking questions.
 3.  The user types a natural language query (e.g., "show me users from Canada").
 4.  The frontend sends the query and the *entire original dataset* to the **FastAPI backend**.
 5.  The backend receives the request. It extracts the column headers from the data.
-6.  It sends the headers and the user's query to the **Gemini AI**, asking it to generate a structured JSON filter.
+6.  It sends the headers and the user's query to the **Large Language Model**, asking it to generate a structured JSON filter.
 7.  The AI responds with a filter, e.g., `[{"header": "Country", "operator": "===", "value": "Canada"}]`.
 8.  The backend uses **Pandas** to apply this filter to the dataset, which is extremely fast.
 9.  The backend returns the final, **filtered data** as a JSON response to the frontend.

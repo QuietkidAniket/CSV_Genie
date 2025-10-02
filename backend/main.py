@@ -18,10 +18,10 @@ try:
 except KeyError:
     raise RuntimeError("GROQ_API_KEY not found in .env file. Please add your Groq API key.")
 
-# Initialize FastAPI app WITHOUT any root_path
+# Initialize FastAPI app
 app = FastAPI(
-    title="CSV Query Genie API",
-    description="An API that uses Groq and Polars to filter CSV data.",
+    title="CSV Query Genie API (Groq Edition)",
+    description="An API that uses Groq and Polars to filter CSV data based on natural language queries.",
     version="1.2.0",
 )
 
