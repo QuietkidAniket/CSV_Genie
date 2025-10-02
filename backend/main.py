@@ -9,20 +9,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import AsyncGroq
 
+# Load environment variables from .env file
 load_dotenv()
 
+# --- Initialize Groq Client ---
 try:
     groq_client = AsyncGroq(api_key=os.environ["GROQ_API_KEY"])
 except KeyError:
     raise RuntimeError("GROQ_API_KEY not found in .env file. Please add your Groq API key.")
 
-# CHANGE 1: Remove the root_path from the app definition
+# Initialize FastAPI app WITHOUT any root_path
 app = FastAPI(
-    title="CSV Query Genie API (Groq/Polars Edition)",
+    title="CSV Query Genie API",
     description="An API that uses Groq and Polars to filter CSV data.",
-    version="1.1.0",
+    version="1.2.0",
 )
 
+# CORS Middleware is still needed
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -31,10 +34,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Pydantic Models ---
 class QueryRequest(BaseModel):
     query: str
     data: List[Dict[str, Any]]
 
+# --- Helper Functions (No changes needed here) ---
 def apply_filters(df: pl.DataFrame, filters: List[Dict[str, Any]]) -> pl.DataFrame:
     if not filters:
         return df
@@ -89,8 +94,10 @@ async def generate_filter_from_ai(query: str, headers: List[str]) -> List[Dict[s
                 raise HTTPException(status_code=500, detail="AI failed to generate a valid JSON filter.")
     return []
 
-# CHANGE 2: The endpoint now explicitly listens for the full path
-@app.post("/api/query")
+# --- API Endpoints ---
+
+# THE FIX: The path is now just "/query". Vercel's routing handles the "/api" part.
+@app.post("/query")
 async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
     if not request.data: return []
     try:
@@ -106,6 +113,7 @@ async def handle_query(request: QueryRequest) -> List[Dict[str, Any]]:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to apply filters: {str(e)}")
 
-@app.get("/api")
+# THE FIX: The root path is now just "/".
+@app.get("/")
 async def root():
     return {"message": "CSV Query Genie API is running!"}
