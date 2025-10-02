@@ -23,6 +23,7 @@ app = FastAPI(
     title="CSV Query Genie API (Groq/Polars Edition)",
     description="An API that uses Groq and Polars to filter CSV data.",
     version="1.1.0",
+    root_path="/api"  
 )
 
 # Configure CORS
